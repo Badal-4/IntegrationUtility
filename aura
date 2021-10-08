@@ -1,0 +1,201 @@
+<aura:component controller="ContactDetail_Factset" implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction" access="global" >
+    <aura:attribute name="recordId" type="string"/>
+    <aura:attribute name="factsetData" type="List"/>
+    <aura:attribute name="contactData" type="contact"/>
+    <aura:attribute name="responsibleFundList" type="List"/>
+    <aura:attribute name="recommendedFundList" type="List"/>
+    <aura:attribute name="isbasic" type="boolean" default="false"/>
+    <aura:handler name="init" action="{!c.doInit}" value="{!this}"/>
+    
+    <lightning:messageChannel type="Integrationdatacarrier__c" aura:id="contactMessageChannel"/>
+    <article class="slds-card">
+        <div class="slds-card__header slds-grid" style="padding-left:2%;border-bottom:2px solid #F4F4F4">
+            <img src="{!$Resource.Cashpic}"/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<h2><b>Investor Info</b></h2>
+        </div>
+        <div class="slds-card__body" style="padding:2%">
+            
+            <table>
+                <aura:if isTrue="{!!v.isbasic}">
+                    <aura:if isTrue="{!not(empty(v.factsetData))}">
+                        <aura:iteration items="{!v.factsetData}" var="fc">
+                            
+                        <tr>
+                            <td>
+                                <span class="slds-form-element__label">
+                                    {!fc.name}
+                                    <aura:if isTrue="{!fc.name=='AuR'}">&nbsp;(USD)</aura:if>
+                                </span>
+                            </td>
+                            <td style="float:right">
+                                <span class="slds-form-element__label">
+                                    <aura:if isTrue = "{!fc.value != ''}">
+                                        {!fc.value}
+                                    	<aura:if isTrue="{!fc.name=='% of Shares Outstanding'}">%</aura:if>
+                                        <aura:set attribute = "else">
+                                            0
+                                        </aura:set>
+                                    </aura:if>
+                                    
+                                </span>
+                            </td>
+                        </tr><br/>
+                        </aura:iteration>
+                        <aura:set attribute="else">
+                            <tr>
+                                <td><span class="slds-form-element__label">AuR (USD)</span></td>
+                                <td><span class="slds-form-element__label">N/A</span></td>
+                            </tr><br/>
+                            <tr>
+                                <td><span class="slds-form-element__label">Shares Held</span></td>
+                                <td><span class="slds-form-element__label">N/A</span></td>
+                            </tr><br/>
+                            <tr>
+                                <td><span class="slds-form-element__label">% of Shares Outstanding</span></td>
+                                <td><span class="slds-form-element__label">N/A</span></td>
+                            </tr><br/>
+                        </aura:set>
+                    </aura:if>
+                    <aura:set attribute="else">
+                        <tr>
+                            <td><span class="slds-form-element__label">AuR (USD)</span></td>
+                            <td><span class="slds-form-element__label"><img class = "imgWidth" src="{!$Resource.lock}" ></img></span></td>
+                        </tr><br/>
+                        <tr>
+                            <td><span class="slds-form-element__label">Shares Held</span></td>
+                            <td><span class="slds-form-element__label"><img class = "imgWidth" src="{!$Resource.lock}"></img></span></td>
+                        </tr><br/>
+                        <tr>
+                            <td><span class="slds-form-element__label">% of Shares Outstanding</span></td>
+                            <td><span class="slds-form-element__label"><img class = "imgWidth" src="{!$Resource.lock}"></img></span></td>
+                        </tr><br/>
+                    </aura:set>
+                </aura:if>
+                <tr>
+                    <td><span class="slds-form-element__label">Tier</span></td>
+                    <td><span class="slds-form-element__label slds-float--right">{!v.contactData.Tier__c}</span></td>
+                </tr>
+            </table>
+        </div>
+    </article>
+    <!--responsiboleFundsTable-->
+    <article class="slds-card">
+        <div class="slds-card__header slds-grid" style="padding-left:2%;border-bottom:2px solid #F4F4F4">
+            <h2><b>Invested Funds</b></h2>    
+        </div>
+        <div class="slds-card__body" style="padding:2%">
+            <table>
+                <aura:if isTrue="{!!v.isbasic}">
+                    <aura:if isTrue="{!not(empty(v.responsibleFundList))}">
+                        <aura:iteration items="{!v.responsibleFundList}" var="res">
+                            <tr>
+                                <td>
+                                    <a class = "slds-p-right--medium slds-col buttonColour fontSize" name="{!res.id}"
+                                    onclick="{!c.handleNavigate}">{!res.name}</a>
+                                </td>
+                            </tr>
+                            <br/>
+                            
+                         <tr>
+                                <td>
+                                    <span class="slds-form-element__label">
+                                        Shares Held
+                                    </span>   
+                                </td>
+                                <td>
+                                    <span class="slds-form-element__label slds-float--right">
+                                        {!res.value}
+                                    </span>   
+                                </td>
+                            </tr>
+                            <br/>
+                            <tr>
+                                <td>
+                                    <span class="slds-form-element__label">
+                                        % of Shares Outstanding
+                                    </span>   
+                                </td>
+                                <td>
+                                    <span class="slds-form-element__label slds-float--right">
+                                        {!res.value_pct}%
+                                    </span>   
+                                </td>
+                            </tr>
+                            <br/> 
+                        </aura:iteration>
+                        <aura:set attribute="else">
+                           
+                            <tr>
+                                <td><span class="slds-form-element__label">Shares Held</span></td>
+                                <td><span class="slds-form-element__label">0</span></td>
+                            </tr><br/>
+                            <tr>
+                                <td><span class="slds-form-element__label">% of Shares Outstanding</span></td>
+                                <td><span class="slds-form-element__label">0%</span></td>
+                            </tr><br/>
+                        </aura:set>
+                    </aura:if>
+                </aura:if>
+            </table>
+        </div>
+    </article>
+    <!--Recommended Funds Table-->
+    <article class="slds-card">
+        <div class="slds-card__header slds-grid" style="padding-left:2%;border-bottom:2px solid #F4F4F4">
+            <h2><b>Recommended Funds</b></h2>    
+        </div>
+        <div class="slds-card__body" style="padding:2%">
+            <table>
+                <aura:if isTrue="{!!v.isbasic}">
+                    <aura:if isTrue="{!not(empty(v.recommendedFundList))}">
+                        <aura:iteration items="{!v.recommendedFundList}" var="rec">
+                            <tr>
+                                <td>
+                                   <a class = "slds-p-right--medium slds-col buttonColour fontSize" name="{!rec.id}"
+                                    onclick="{!c.handleNavigate}">{!rec.name}</a>
+                                </td>
+                            </tr>
+                            <br/>
+                            <tr>
+                                <td>
+                                    <span class="slds-form-element__label">
+                                        Potential (USD)
+                                    </span>   
+                                </td>
+                                <td>
+                                    <span class="slds-form-element__label slds-float--right">
+                                        {!rec.value}
+                                    </span>   
+                                </td>
+                            </tr>
+                            <br/>
+                            <tr>
+                                <td>
+                                    <span class="slds-form-element__label">
+                                        Rank
+                                    </span>   
+                                </td>
+                                <td>
+                                    <span class="slds-form-element__label slds-float--right">
+                                        {!rec.rank}
+                                    </span>   
+                                </td>
+                            </tr>
+                            <br/>
+                        </aura:iteration>
+                        <aura:set attribute="else">
+                           
+                            <tr>
+                                <td><span class="slds-form-element__label">Potential (USD)</span></td>
+                                <td><span class="slds-form-element__label" style=" padding-left: 113px;">0</span></td>
+                            </tr><br/>
+                            <tr>
+                                <td><span class="slds-form-element__label">Rank</span></td>
+                                <td><span class="slds-form-element__label" style=" padding-left: 113px;">0</span></td>
+                            </tr><br/>
+                        </aura:set>
+                    </aura:if>
+                </aura:if>
+            </table>
+        </div>
+    </article>
+</aura:component>
