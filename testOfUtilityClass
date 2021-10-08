@@ -1,0 +1,188 @@
+/* This class is used as controller to show details of contact from the factset..
+--------------------------------------------------------------------------------------
+Version#     Date                           Author                    Description
+--------------------------------------------------------------------------------------
+1.0          11-03-2021                   Vaishali Jain              Initial Version
+--------------------------------------------------------------------------------------
+*/ 
+public without sharing class ContactDetail_Factset{
+    
+    /**
+     * Method to get factset data related to the contact from third party system
+     **/
+    @AuraEnabled
+    public static AuraResponse fetchFactset(String contactId){
+        AuraResponse auraResponse;
+        try{
+            
+            User userInstance = getLoggedInUser();
+            Contact conVal = getContactFromId(contactId);
+            String personId;
+            if(conVal != null){
+                personId = conVal.Person_id__c;
+            }
+            
+            if(userInstance.contact.account.Billing_Master__r.name != 'Basic'){
+                if(!string.isblank(userInstance.contact.fysm_Id__c) && !string.isblank(personId)){
+                    List<ContactParser> rps = new List<ContactParser>();
+                    IntegrationUtility.integrationWrapper iw = new IntegrationUtility.integrationWrapper();
+                    iw.metadataName = 'ContactRightSide';
+                    datetime dt = datetime.now().addminutes(30);
+                    iw.requestBody = '{"personid":"'+personId+'","fsym":"'+userInstance.contact.fysm_Id__c+'"}';
+                    //iw.requestBody = '{"personid":"'+'00BXWS-E'+'","fsym":"'+'TW997W-S'+'"}';
+                    iw.jwtPayload = '{"role":"rest_user","exp":'+dt.getTime()+'}';
+                    iw = IntegrationUtility.doCallout(iw);
+                    if(iw.statusCode != null){
+                        if(iw.statusCode == 200 || iw.statusCode == 201){
+                            rps = (List<contactParser>) System.JSON.deserialize(iw.responseBody, List<contactParser>.class);
+                            finalResponse fr = new finalResponse();
+                            fr.parserData = rps;
+                            fr.isBasic = false;
+                            fr.conData = conVal;
+                            AuraResponse = new AuraResponse(true, 'SUCCESS', JSON.serialize(fr));
+                        
+                        }else{
+                            AuraResponse = new AuraResponse(false, 'Error', 'Something went wrong' + iw.statusCode);
+                        }
+                    }else{
+                        finalResponse fr = new finalResponse();
+                        List<contactParser> rps1 = new List<contactParser>();
+                        fr.parserData = rps1;
+                        fr.isBasic = false;
+                        fr.conData = conVal;
+                        AuraResponse = new AuraResponse(true, 'SUCCESS', JSON.serialize(fr));
+                        //AuraResponse = new AuraResponse(false, 'Error', 'Something went wrong'); 
+                    }
+                }else{
+                    finalResponse fr = new finalResponse();
+                    List<contactParser> rps1 = new List<contactParser>();
+                    fr.parserData = rps1;
+                    fr.isBasic = false;
+                    fr.conData = conVal;
+                    AuraResponse = new AuraResponse(true, 'SUCCESS', JSON.serialize(fr));
+                }
+            }else{
+                finalResponse fr = new finalResponse();
+                List<contactParser> rps1 = new List<contactParser>();
+                fr.parserData = rps1;
+                fr.isBasic = true;
+                fr.conData = conVal;
+                AuraResponse = new AuraResponse(true, 'SUCCESS', JSON.serialize(fr));
+            }
+             
+           /* if(!string.isblank(userInstance.contact.fysm_Id__c) && !string.isblank(accountIdVal)){
+                List<ContactParser> rps = new List<ContactParser>();
+                if(userInstance.contact.account.Billing_Master__r.name != 'Basic'){
+                    IntegrationUtility.integrationWrapper iw = new IntegrationUtility.integrationWrapper();
+                    iw.metadataName = 'ContactRightSide';
+                    iw.requestBody = '{"instentityid":"'+accountIdVal+'","fsym":"'+userInstance.contact.fysm_Id__c+'"}';
+                    iw = IntegrationUtility.doCallout(iw);
+                    if(iw.statusCode != null){
+                        if(iw.statusCode == 200 || iw.statusCode == 201){
+                            rps = (List<contactParser>) System.JSON.deserialize(iw.responseBody, List<contactParser>.class);
+                            finalResponse fr = new finalResponse();
+                            fr.parserData = rps;
+                            fr.isBasic = false;
+                            fr.conData = conVal;
+                            AuraResponse = new AuraResponse(true, 'SUCCESS', JSON.serialize(fr));
+                        
+                        }else{
+                            AuraResponse = new AuraResponse(false, 'Error', 'Something went wrong' + iw.statusCode);
+                        }
+                    }else{
+                        AuraResponse = new AuraResponse(false, 'Error', 'Something went wrong'); 
+                    }
+                }else{
+                    finalResponse fr = new finalResponse();
+                    List<contactParser> rps1 = new List<contactParser>();
+                    fr.parserData = rps1;
+                    fr.isBasic = true;
+                    fr.conData = conVal;
+                    AuraResponse = new AuraResponse(true, 'SUCCESS', JSON.serialize(fr));
+                }
+            }else{
+                AuraResponse = new AuraResponse(false, 'ERROR', 'fysm or institute factset id Not Found!');
+            }*/
+        }
+        catch(exception ex){
+             logger('ContactDetail_Factset', 
+                      ex.getStackTraceString(),
+                      ex.getMessage(),
+                      'Contact detail right side component',
+                      'error');
+            AuraResponse = new AuraResponse(false, 'ERROR', ex.getMessage());
+        }
+        return AuraResponse;
+    }
+    
+    /**
+     * Method to get logged in user
+     **/
+    private static User getLoggedInUser(){
+        return [select id, 
+                        contact.fysm_Id__c, 
+                        contact.account.Institute_Factset_Id__c,
+                        contact.account.Billing_Master__r.name 
+                    from user
+                    where id=:userinfo.getuserid()];
+    }
+    
+    /**
+     * Method to get contact details on the basis of Id
+     **/
+    private static Contact getContactFromId(String contactID){
+        return [select Tier__c,
+                        Person_id__c,
+                        account.Institute_Factset_Id__c 
+                    from contact 
+                    where id=:contactID];
+    }
+    
+    /**
+     * Method to insert loggers
+     **/
+    private static void logger(string className,
+                                string ex,
+                              string message,
+                              string module,
+                              string type) {
+       insert new Exception_Logger__c(class__c = className,
+                                     exception__c = ex,
+                                     message__c = message,
+                                     module__c = module,
+                                     Log_time__c = system.now(),
+                                     type__c = type);
+    }
+    
+    /**
+     * Class to map integration response
+     **/
+    public class contactParser{
+        @AuraEnabled
+        public String type{get;set;}
+        @AuraEnabled
+        public decimal rank{get;set;}
+        @AuraEnabled
+        public String name{get;set;}
+        @AuraEnabled
+        public String id{get;set;}
+        @AuraEnabled
+        public String id_type{get;set;}
+        @AuraEnabled
+        public Decimal value{get;set;}
+        @AuraEnabled
+        public Decimal value_pct{get;set;}
+    }
+    
+    /**
+     * Class to map response for UI
+     **/
+    public class finalResponse{
+        @AuraEnabled
+        public list<contactParser> parserData{get;set;}
+        @AuraEnabled
+        public boolean isBasic{get;set;}
+        @AuraEnabled
+        public contact conData{get;set;}
+    }
+}
